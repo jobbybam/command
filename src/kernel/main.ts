@@ -1668,15 +1668,21 @@ process.on('uncaughtExceptionMonitor', (error) => {
     )
 
     /**
-     * File Tweaks — hidden behind a personal key; every handler refuses
-     * work until the gate is unlocked (session memory only).
+     * File Tweaks — behind a risk acknowledgement; every handler refuses
+     * work until it is given (session memory only).
      */
 
-    secureIpcHandle(ElectronAPIEventKeys.FileTweaksUnlock, (_, key: string) => {
-      return import('./core/file-tweaks/gate').then((module) =>
-        module.fileTweaksUnlock(key)
-      )
-    })
+    secureIpcHandle(
+      ElectronAPIEventKeys.FileTweaksAcknowledge,
+      (_, understandsRisks: boolean, altAccountOnly: boolean) => {
+        return import('./core/file-tweaks/gate').then((module) =>
+          module.fileTweaksAcknowledge(
+            understandsRisks === true,
+            altAccountOnly === true
+          )
+        )
+      }
+    )
 
     secureIpcHandle(ElectronAPIEventKeys.FileTweaksLockStatus, async () => {
       const { fileTweaksIsUnlocked } = await import('./core/file-tweaks/gate')

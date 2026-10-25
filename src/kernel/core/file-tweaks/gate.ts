@@ -1,30 +1,31 @@
-import { createHash } from 'node:crypto'
-
 /**
- * File Tweaks are experimental and hidden behind a personal access key.
+ * File Tweaks are risky: they edit Fortnite's game files on disk.
  *
- * The key never lives in the code — only its SHA-256 digest does. Unlock
- * state is main-process memory only, so every app restart requires
- * re-entering the key, and every file-tweak IPC handler refuses work
- * until the gate is open.
+ * Command asks the user to acknowledge that before any tweak can run. The
+ * acknowledgement lives in main-process memory only, so it resets on every
+ * app restart, and every file-tweak IPC handler refuses work until it is
+ * given. The renderer may remember a "do not show again" choice, but it
+ * still has to call `fileTweaksAcknowledge` each session — the main process
+ * never trusts a stored preference on its own.
  */
 
-const KEY_DIGEST = '6e58b821db4dd248b5c059cad7d77a6bf21579594d122ccfd05e1e22922c999e'
+let acknowledged = false
 
-let unlocked = false
-
-export function fileTweaksUnlock(key: string): boolean {
-  const digest = createHash('sha256')
-    .update(key.trim(), 'utf8')
-    .digest('hex')
-
-  if (digest === KEY_DIGEST) {
-    unlocked = true
+/**
+ * Opens the gate, but only when both statements were accepted:
+ * the user understands the risks, and will only use tweaks on an alt.
+ */
+export function fileTweaksAcknowledge(
+  understandsRisks: boolean,
+  altAccountOnly: boolean
+): boolean {
+  if (understandsRisks === true && altAccountOnly === true) {
+    acknowledged = true
   }
 
-  return unlocked
+  return acknowledged
 }
 
 export function fileTweaksIsUnlocked(): boolean {
-  return unlocked
+  return acknowledged
 }

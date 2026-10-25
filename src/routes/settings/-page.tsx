@@ -1,18 +1,10 @@
-import { Cog, LoaderCircle, Lock } from 'lucide-react'
-import { useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Cog, Wrench } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import packageJson from '../../../package.json'
 
 import { Button } from '../../components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '../../components/ui/dialog'
-import { Input } from '../../components/ui/input'
 import {
   PageHeader,
   PageTabs,
@@ -27,6 +19,8 @@ import { OverlaySettingsForm } from './-overlay-settings'
 
 import { useGetAccounts } from '../../hooks/accounts'
 
+import { useTweaksWarningStore } from '../../state/settings/tweaks-warning'
+
 import { Route } from './route'
 
 export function RouteComponent() {
@@ -36,110 +30,41 @@ export function RouteComponent() {
     <>
       <PageHeader icon={Cog} title={t('settings')} />
       <Content />
-      <HiddenTweaksTrigger />
+      <TweaksFooter />
     </>
   )
 }
 
 /**
- * The only door to the hidden File Tweaks route: a quiet version line at
- * the foot of Settings. Seven clicks on it open a key dialog — the main
- * process gates every handler behind that key, so reaching the route
- * without it leads nowhere.
+ * Foot of Settings: the app version, the way into Tweaks, and — once the
+ * user has chosen "do not show again" — a way to bring the warning back.
  */
-const TWEAKS_TRIGGER_CLICKS = 7
-
-function HiddenTweaksTrigger() {
-  const navigate = useNavigate()
-
-  const clicks = useRef(0)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [key, setKey] = useState('')
-  const [isWrong, setIsWrong] = useState(false)
-  const [isWorking, setIsWorking] = useState(false)
-
-  const handleClick = () => {
-    clicks.current += 1
-
-    if (clicks.current >= TWEAKS_TRIGGER_CLICKS) {
-      clicks.current = 0
-      setIsDialogOpen(true)
-    }
-  }
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
-    setIsWorking(true)
-
-    try {
-      const unlocked = await window.electronAPI.fileTweaksUnlock(key)
-
-      if (unlocked) {
-        setIsDialogOpen(false)
-        setKey('')
-        void navigate({ to: '/settings/tweaks' })
-      } else {
-        setIsWrong(true)
-      }
-    } catch {
-      setIsWrong(true)
-    } finally {
-      setIsWorking(false)
-    }
-  }
+function TweaksFooter() {
+  const skipWarning = useTweaksWarningStore((state) => state.skipWarning)
+  const setSkipWarning = useTweaksWarningStore((state) => state.setSkipWarning)
 
   return (
-    <>
-      <div className="max-w-4xl pb-6 pt-4">
-        <button
-          className="micro-label select-none text-muted-foreground/50 hover:text-muted-foreground"
-          onClick={handleClick}
+    <div className="flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 pb-6 pt-4">
+      <span className="micro-label select-none text-muted-foreground/70">
+        Command v{packageJson.version}
+      </span>
+      <Button asChild size="sm" variant="outline">
+        <Link to="/settings/tweaks">
+          <Wrench className="size-3.5" />
+          Tweaks
+        </Link>
+      </Button>
+      {skipWarning && (
+        <Button
+          onClick={() => setSkipWarning(false)}
+          size="sm"
           type="button"
+          variant="ghost"
         >
-          Penny v{packageJson.version}
-        </button>
-      </div>
-
-      <Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="size-4" />
-              Restricted area
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Experimental file patching tools, gated behind a personal access
-            key. Every session requires re-entering the key.
-          </p>
-          <form className="space-y-3" onSubmit={handleSubmit}>
-            <Input
-              aria-label="Access key"
-              autoFocus
-              onChange={(event) => {
-                setKey(event.currentTarget.value)
-                setIsWrong(false)
-              }}
-              placeholder="Access key"
-              type="password"
-              value={key}
-            />
-            {isWrong && <p className="text-xs text-destructive">Wrong key</p>}
-            <Button
-              className="w-full"
-              disabled={isWorking || key.length === 0}
-              type="submit"
-            >
-              {isWorking ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                'Continue'
-              )}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+          Show the Tweaks warning again
+        </Button>
+      )}
+    </div>
   )
 }
 

@@ -189,10 +189,10 @@ export enum ElectronAPIEventKeys {
   MatchmakingTrackStatusNotification = 'advanced-mode:matchmaking-track:status:notification',
 
   /**
-   * File Tweaks — hidden, personal-key gated (see kernel/core/file-tweaks).
+   * File Tweaks — behind a risk acknowledgement (see kernel/core/file-tweaks).
    */
 
-  FileTweaksUnlock = 'file-tweaks:unlock',
+  FileTweaksAcknowledge = 'file-tweaks:acknowledge',
   FileTweaksLockStatus = 'file-tweaks:lock-status',
 
   FileTweaksDevBuildsStatus = 'file-tweaks:devbuilds:status',

@@ -4,14 +4,14 @@ import {
   Download,
   Hammer,
   LoaderCircle,
-  Lock,
   RefreshCw,
   ShieldCheck,
   TriangleAlert,
   Wrench,
   Zap,
 } from 'lucide-react'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type {
@@ -23,6 +23,7 @@ import type {
 
 import { BetaBadge } from '../../../components/navigation/beta-badge'
 import { Button } from '../../../components/ui/button'
+import { Checkbox } from '../../../components/ui/checkbox'
 import { Input } from '../../../components/ui/input'
 import {
   Select,
@@ -195,8 +196,9 @@ export function RouteComponent() {
     handleRevertBase,
     handleRevertTrap,
     handleTogglePatch,
-    handleUnlock,
+    handleAcknowledge,
     handleWorkerPowerMode,
+    isChecking,
     isLocked,
     patchLoading,
     patchStatuses,
@@ -227,8 +229,8 @@ export function RouteComponent() {
         description="Patch Fortnite's game files: dev builds, dev stairs, airstrike and trap heights."
       />
 
-      {isLocked ? (
-        <LockScreen onUnlock={handleUnlock} />
+      {isChecking ? null : isLocked ? (
+        <RiskGate onAcknowledge={handleAcknowledge} />
       ) : (
         <>
           <Callout
@@ -236,8 +238,8 @@ export function RouteComponent() {
             tone="warning"
           >
             Close Fortnite first. To undo everything, run Verify in the Epic
-            Games Launcher. Server checks can still flag the effects — test on
-            your own accounts only.
+            Games Launcher. Server checks can still flag the effects — only use
+            tweaks on an alt account.
           </Callout>
 
       <Panel>
@@ -327,60 +329,134 @@ export function RouteComponent() {
 }
 
 /**
- * The key form shown until the main-process gate opens. Deliberately
- * plain: the page is unreachable from navigation, so the only way here is
- * the hidden Settings gesture or knowing the route exists.
+ * The warning shown before any tweak can be used. Both statements must be
+ * accepted; "do not show again" only becomes available once they are, and
+ * the main process still needs the acknowledgement every session.
  */
-function LockScreen({ onUnlock }: { onUnlock: (key: string) => Promise<boolean> }) {
-  const [key, setKey] = useState('')
-  const [isWrong, setIsWrong] = useState(false)
+function RiskGate({
+  onAcknowledge,
+}: {
+  onAcknowledge: (skipNextTime: boolean) => Promise<boolean>
+}) {
+  const navigate = useNavigate()
+
+  const [understandsRisks, setUnderstandsRisks] = useState(false)
+  const [altOnly, setAltOnly] = useState(false)
+  const [skipNextTime, setSkipNextTime] = useState(false)
+  const [isFailed, setIsFailed] = useState(false)
   const [isWorking, setIsWorking] = useState(false)
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
+  const accepted = understandsRisks && altOnly
+
+  const handleContinue = async () => {
+    if (!accepted) return
+
     setIsWorking(true)
+    setIsFailed(false)
 
     try {
-      const unlocked = await onUnlock(key)
-      setIsWrong(!unlocked)
+      const opened = await onAcknowledge(skipNextTime)
+
+      setIsFailed(!opened)
     } catch {
-      setIsWrong(true)
+      setIsFailed(true)
     } finally {
       setIsWorking(false)
     }
   }
 
   return (
-    <Panel className="mt-8 max-w-md p-6">
+    <Panel className="mt-8 max-w-xl p-6">
       <div className="flex items-center gap-2">
-        <Lock className="size-4 text-muted-foreground" />
-        <p className="text-title font-semibold">Restricted</p>
+        <TriangleAlert className="size-4 text-warning" />
+        <p className="text-title font-semibold">Before you use Tweaks</p>
       </div>
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-        Game file patching for the maintainer's own testing. Enter the access
-        key to unlock this session.
+        Tweaks change Fortnite's game files on your computer. They can break
+        after a game update, may be detected by Epic's checks, and could put
+        the account you play on at risk. Use them at your own risk.
       </p>
-      <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
-        <Input
-          autoFocus
-          onChange={(event) => {
-            setKey(event.currentTarget.value)
-            setIsWrong(false)
-          }}
-          placeholder="Access key"
-          type="password"
-          value={key}
-        />
-        {isWrong && (
-          <Callout role="alert" tone="danger">Wrong key. Check it and try again.</Callout>
-        )}
-        <Button className="w-full" disabled={isWorking || key.length === 0} type="submit">
-          {isWorking ? <LoaderCircle className="size-4 animate-spin" /> : (
+
+      <div className="mt-5 space-y-3">
+        <label className="flex cursor-pointer items-start gap-3 text-sm">
+          <Checkbox
+            aria-label="I understand the risks of using tweaks"
+            checked={understandsRisks}
+            className="mt-0.5"
+            onCheckedChange={(value) => {
+              setUnderstandsRisks(value)
+
+              if (!value || !altOnly) setSkipNextTime(false)
+            }}
+          />
+          <span>I understand the risks of using any of the tweaks.</span>
+        </label>
+
+        <label className="flex cursor-pointer items-start gap-3 text-sm">
+          <Checkbox
+            aria-label="I will only use tweaks on an alt account"
+            checked={altOnly}
+            className="mt-0.5"
+            onCheckedChange={(value) => {
+              setAltOnly(value)
+
+              if (!value || !understandsRisks) setSkipNextTime(false)
+            }}
+          />
+          <span>
+            I will always use tweaks on an alt account, never on my main.
+          </span>
+        </label>
+
+        <label
+          className={cn(
+            'flex items-start gap-3 border-t border-border/30 pt-3 text-sm',
+            accepted ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+          )}
+        >
+          <Checkbox
+            aria-label="Do not show this warning again"
+            checked={skipNextTime}
+            className="mt-0.5"
+            disabled={!accepted}
+            onCheckedChange={setSkipNextTime}
+          />
+          <span>
+            Do not show this again.
+            <span className="block text-xs text-muted-foreground">
+              You can bring the warning back from Settings.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      {isFailed && (
+        <Callout className="mt-4" role="alert" tone="danger">
+          Could not continue. Try again.
+        </Callout>
+      )}
+
+      <div className="mt-5 flex gap-2">
+        <Button
+          disabled={!accepted || isWorking}
+          onClick={handleContinue}
+          type="button"
+        >
+          {isWorking ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
             <ShieldCheck className="size-4" />
           )}
-          Unlock
+          Continue
         </Button>
-      </form>
+        <Button
+          onClick={() => void navigate({ to: '/settings' })}
+          type="button"
+          variant="ghost"
+        >
+          Cancel
+        </Button>
+      </div>
     </Panel>
   )
 }

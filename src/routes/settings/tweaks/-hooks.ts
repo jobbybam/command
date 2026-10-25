@@ -7,6 +7,8 @@ import {
 } from '../../../state/settings/file-tweaks'
 import { usePrimaryAccount } from '../../../hooks/accounts/scope'
 
+import { useTweaksWarningStore } from '../../../state/settings/tweaks-warning'
+
 import { toast } from '../../../lib/notifications'
 
 const PATCH_IDS: Array<PatchKey> = ['devBuilds', 'devStairs', 'airStrike']
@@ -45,29 +47,57 @@ export function useFileTweaksData() {
   const store = useFileTweaksStore.getState
 
   /**
-   * The key gate — main-process session memory only, so the page asks on
-   * every visit and shows the key form until the gate opens.
+   * The risk gate — main-process session memory only, so every launch asks
+   * again. When the user ticked "do not show again", the acknowledgement is
+   * given on their behalf here instead of showing the warning.
    */
   const [isLocked, setIsLocked] = useState(true)
+  const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    window.electronAPI
-      .fileTweaksLockStatus()
-      .then(setIsLocked)
-      .catch(() => setIsLocked(true))
-  }, [])
+    let cancelled = false
 
-  const handleUnlock = useCallback(async (key: string): Promise<boolean> => {
-    try {
-      const unlocked = await window.electronAPI.fileTweaksUnlock(key)
+    const run = async () => {
+      try {
+        let open = await window.electronAPI.fileTweaksLockStatus()
 
-      setIsLocked(!unlocked)
+        if (!open && useTweaksWarningStore.getState().skipWarning) {
+          open = await window.electronAPI.fileTweaksAcknowledge(true, true)
+        }
 
-      return unlocked
-    } catch {
-      return false
+        if (!cancelled) setIsLocked(!open)
+      } catch {
+        if (!cancelled) setIsLocked(true)
+      } finally {
+        if (!cancelled) setIsChecking(false)
+      }
+    }
+
+    void run()
+
+    return () => {
+      cancelled = true
     }
   }, [])
+
+  const handleAcknowledge = useCallback(
+    async (skipNextTime: boolean): Promise<boolean> => {
+      try {
+        const open = await window.electronAPI.fileTweaksAcknowledge(true, true)
+
+        if (open && skipNextTime) {
+          useTweaksWarningStore.getState().setSkipWarning(true)
+        }
+
+        setIsLocked(!open)
+
+        return open
+      } catch {
+        return false
+      }
+    },
+    []
+  )
 
   /**
    * Patches are auto-detected once unlocked, sequentially, because
@@ -327,8 +357,9 @@ export function useFileTweaksData() {
     handleRevertBase,
     handleRevertTrap,
     handleTogglePatch,
-    handleUnlock,
+    handleAcknowledge,
     handleWorkerPowerMode,
+    isChecking,
     isLocked,
     patchLoading,
     patchStatuses,

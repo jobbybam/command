@@ -17,8 +17,15 @@ import { ipcRenderer } from 'electron'
 
 import { ElectronAPIEventKeys } from '../../config/constants/main-process'
 
-export function fileTweaksUnlock(key: string): Promise<boolean> {
-  return ipcRenderer.invoke(ElectronAPIEventKeys.FileTweaksUnlock, key)
+export function fileTweaksAcknowledge(
+  understandsRisks: boolean,
+  altAccountOnly: boolean
+): Promise<boolean> {
+  return ipcRenderer.invoke(
+    ElectronAPIEventKeys.FileTweaksAcknowledge,
+    understandsRisks,
+    altAccountOnly
+  )
 }
 
 export function fileTweaksLockStatus(): Promise<boolean> {
@@ -29,7 +36,7 @@ export function fileTweaksLockStatus(): Promise<boolean> {
  * File Tweaks — direct game-file patching (Dev Builds, DevStairs, AirStrike,
  * trap heights, B.A.S.E.) and Worker Power generation.
  *
- * Hidden behind a personal key: the main process keeps an unlock flag in
+ * Behind a risk acknowledgement: the main process keeps an unlock flag in
  * session memory, and every handler below refuses work until it is set.
  */
 
