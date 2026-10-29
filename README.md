@@ -1,5 +1,9 @@
 # Command
 
+<p align="center">
+  <img src="command-homebase.svg" alt="Command Homebase icon" width="112" height="112" />
+</p>
+
 **Command** is a Windows desktop companion for **Fortnite: Save the World**. It brings missions, account information, inventory, party tools, and an interactive Storm Shield outpost viewer into one launcher.
 
 > Command is an independent community project and is not affiliated with or endorsed by Epic Games. Use only accounts you own or are authorized to access. Epic endpoints and cloud-save formats can change without notice.
