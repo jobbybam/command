@@ -1,85 +1,62 @@
-# Penny Launcher
+# Command
 
-[![CI](https://github.com/ahmed5939/penny-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmed5939/penny-launcher/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/ahmed5939/penny-launcher)](https://github.com/ahmed5939/penny-launcher/releases)
+**Command** is a Windows desktop companion for **Fortnite: Save the World**. It brings missions, account information, inventory, party tools, and an interactive Storm Shield outpost viewer into one launcher.
 
-<p align="center">
-  <img src="src/assets/brand/penny-head.png" alt="Penny" width="96" height="96" />
-</p>
-
-Windows desktop app for managing Fortnite Save the World accounts: launch the official game, watch mission alerts, and run STW tools from one window.
-
-Penny is a GPL-3.0 fork of [Aerial Launcher](https://github.com/Ciensprog/Aerial-Launcher) by **Ciensprog** (itself based on Potato Launcher). Maintained by **Ahmed** ([ahmed5939](https://github.com/ahmed5939)). All credit for the original application goes to Ciensprog and contributors.
-
-> Currently in development. Not affiliated with Epic Games. Only download installers from [this repository's Releases](https://github.com/ahmed5939/penny-launcher/releases).
-
-## Installation
-
-Download the latest installer from the [Releases page](https://github.com/ahmed5939/penny-launcher/releases), or build it yourself from source (see [Development](#development)).
-
-### Good To Know
-
-Release builds support Authenticode signing through
-`PENNY_WINDOWS_CERTIFICATE_FILE` and `PENNY_WINDOWS_CERTIFICATE_PASSWORD`.
-Local or nightly builds made without those credentials are unsigned and can
-show a Windows SmartScreen confirmation on first install.
-
-Settings are saved to `C:\Users\YOUR_USER\AppData\Roaming\penny-launcher-data`. Device-auth credentials in `accounts.json` (or `dev-accounts.json` while developing) are encrypted at rest with Electron `safeStorage` (Windows DPAPI / the OS keychain) and stored with an `enc:v1:` prefix. Plaintext files, including copies imported from Aerial Launcher, are encrypted the next time the launcher starts.
-
-#### Migrating data from Aerial Launcher
-
-Penny Launcher uses its own data folder (`penny-launcher-data`) so it won't collide with an existing Aerial Launcher install. To bring your data across:
-
-> Remember to replace YOUR_USER with your Windows username.
-
-1. Copy the files from `C:\Users\YOUR_USER\AppData\Roaming\aerial-launcher-data`.
-1. Paste them into `C:\Users\YOUR_USER\AppData\Roaming\penny-launcher-data`.
-1. Restart the launcher and your data should be loaded.
-
-Or use **Add account → Import from Aerial** on a PC that already has Aerial installed.
-
-#### Update Application
-
-When a new version is available, you will see a notification on the home screen.
+> Command is an independent community project and is not affiliated with or endorsed by Epic Games. Use only accounts you own or are authorized to access. Epic endpoints and cloud-save formats can change without notice.
 
 ## Features
 
-> Note: new features are still in development.
+- **Missions and alerts** — browse available Save the World missions and mission alerts.
+- **Account and inventory views** — inspect supported profile, schematic, survivor, and resource information returned by Epic's services.
+- **Party tools** — view friends and party presence, with a promote action when supported by the active party and account permissions.
+- **3D Storm Shield viewer** — orbit, pan, zoom, and reset the view; import/export compatible layout JSON.
+- **Epic cloud-save loading (experimental)** — request Storm Shield save metadata, locate the matching cloud-storage record, download the save with the authenticated account token, and attempt to parse placed structure/trap coordinates for the viewer.
+- **Remote assets** — load supported UI images from the configured asset host, with local asset fallback where available.
+- **Automated checks** — Node's built-in test runner covers selected UI, API, asset, and parser behavior.
 
-- Manage multiple Fortnite STW accounts (add via Authorization Code, Device Auth, Exchange Code, or Aerial import).
-- Custom game path and custom display names per account.
-- Launch the official Fortnite binary with the selected account (home button or tray).
-- Generate Exchange Codes.
-- Edit the local Fortnite `GameUserSettings.ini` (resolution, display mode, VSync, frame rate limit, 3D resolution) from Settings. Penny copies the file before every write, and the copy can be restored from the same panel.
-- Access the [Penny DB](https://pennydb.net) profile of the selected account.
-- Automation: daily quests, mission scheduling, auto-llamas, and more.
-- Discord Rich Presence from the launcher process only (in launcher / in Save the World / in Battle Royale). Nothing is injected into Fortnite.
-- Optional click-through quest overlay (`Ctrl+Shift+Q`) built as a separate Penny window. It does not inject, hook graphics, read game memory, or require Overwolf; Fortnite must use Borderless/Windowed Fullscreen. Quest and squad discovery currently come from PennyDB's public profile index.
+### Cloud-save limitations
 
-## Development
+Cloud-save parsing is experimental and must be validated against real account saves. The current port handles save discovery and a subset of placed actor coordinates; it is **not** a complete port of Penny Launcher's outpost subsystem. It does not yet reproduce Penny's full trap perk/rarity/level analysis or full extracted Fortnite meshes. A save download can succeed even when its contents cannot be parsed.
 
-Requires [Node.js](https://nodejs.org/) (LTS).
+Party and profile API calls depend on Epic authentication, account state, permissions, and service availability. Passing local tests does not guarantee that a live Epic endpoint will accept every action.
 
-```bash
-npm install        # install dependencies
-npm start          # run the app in development
-npm run make       # build a distributable
-npm run lint       # lint the codebase
-npm run typecheck  # typecheck the codebase
-```
+## Requirements
 
-Releases are automated: pushing a `v*` tag (matching the version in `package.json`) builds the Windows installer on GitHub Actions and creates a draft GitHub release.
+- Windows for the intended packaged build.
+- A compatible Node.js installation.
+- Network access for dependency installation, authentication, cloud saves, and remote assets.
 
-## Credits
+## Run from source
 
-- **Ciensprog** — original developer of [Aerial Launcher](https://github.com/Ciensprog/Aerial-Launcher), the project Penny Launcher is based on.
-- The Aerial Launcher contributors and the wider Fortnite STW community.
-- **Ahmed ([ahmed5939](https://github.com/ahmed5939))** — current Penny maintainer.
+From the Command/ project directory:
 
-## Contributing
+    npm ci
+    npm start
 
-1. Create a new branch `git checkout -b new-feature`.
-1. Stage your changes with `git add .`
-1. Commit your changes `git commit -m "my new feature"`
-1. Push your commit `git push origin new-feature`
-1. Open a Pull Request.
+Run tests:
+
+    npm test
+
+Build the Windows installer and portable executable:
+
+    npm run dist
+
+The build command uses Electron Builder to produce artifacts under dist/. Build dependencies must be installed successfully before packaging. A source ZIP is not itself an installer.
+
+## Asset hosting
+
+Command can request UI assets from the configured remote asset host and can fall back to matching files in a local assets/ directory when present. Keep the expected directory structure intact, ensure the URLs are publicly accessible over HTTPS, and update the asset manifest when the available files change.
+
+See [ASSET_HOSTING.md](ASSET_HOSTING.md) for setup notes.
+
+## Project notes
+
+- [Implementation notes for v0.2.42](IMPLEMENTATION-NOTES-0.2.42.md)
+- [Party API notes](PARTY_API_NOTES.md)
+- [Feature notes](FEATURES-0.2.40.md) and [earlier feature notes](FEATURES-0.2.39.md)
+
+## Safety and project status
+
+Command is a community-made companion, not an official Epic Games product. Do not share account tokens or credentials. Review any account-changing action before using it, and back up important local data before testing experimental features.
+
+This repository is a source project. Check the implementation notes and automated test results before treating any feature as production-ready.
